@@ -2,73 +2,124 @@ var express = require('express');
 var request = require('request');
 var fetch = require('node-fetch');
 var router = express.Router();
+var redis = require('redis');
 
+// Create a Redis client
+var redisClient = redis.createClient();
+
+redisClient.on('connect', function () {
+    console.log('redis connected');
+    console.log(`connected ${redisClient.connected}`);
+}).on('error', function (error) {
+    console.log(error);
+});
+
+
+function getJokeFromAPI(options) {
+    return new Promise((resolve, reject) => {
+        request.get(options, function(err, response, body) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(JSON.parse(body));
+            }
+        });
+    });
+}
 
 // POST route using a promise
 router.post('/promise-random-joke', function(req, res) {
-    const options = {
-        url: process.env.RAPIDAPI_URL,
-        headers: {
-            'X-RapidAPI-Key': process.env.JOKE_API_KEY,
-            'X-RapidAPI-Host': process.env.RAPIDAPI_HOST
+    const cacheKey = 'promise-random-joke';
+    redisClient.get(cacheKey, async (err, cachedData) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
         }
-    };
 
-    // Promise wrapping the request
-    new Promise(function(resolve, reject) {
-        request.get(options, function(err, response, body) {
-            if (err) {
-                res.render('joke', { joke: null, error: 'Error fetching joke' })
-            } else {
-                const data = JSON.parse(body);
-                res.render('joke', { joke: data.body[0], error: null})
+        if (cachedData) {
+            // Cache hit
+            return res.json({ source: 'cache', data: JSON.parse(cachedData) });
+        } else {
+            // Cache miss
+            const options = {
+                url: process.env.RAPIDAPI_URL,
+                headers: {
+                    'X-RapidAPI-Key': process.env.JOKE_API_KEY,
+                    'X-RapidAPI-Host': process.env.RAPIDAPI_HOST
+                }
+            };
+
+            try {
+                const data = await getJokeFromAPI(options);
+                redisClient.setex(cacheKey, 15, JSON.stringify(data));
+                res.json({ source: 'api', data });
+            } catch (error) {
+                res.status(500).json({ error: error.message });
             }
-        });
-    })
-    .then(body => {
-        res.json(JSON.parse(body));
-    })
-    .catch(error => {
-        res.status(500).json({ error });
+        }
     });
 });
 
 // POST route using async/await
 router.post('/async-random-joke', async function(req, res) {
-    const url = process.env.RAPIDAPI_URL;
-    const headers = {
-        'X-RapidAPI-Key': process.env.JOKE_API_KEY,
-        'X-RapidAPI-Host': process.env.RAPIDAPI_HOST
-    };
+    const cacheKey = 'async-random-joke';
+    redisClient.get(cacheKey, async (err, cachedData) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
 
-    try {
-        const response = await fetch(url, { headers: headers });
-        const data = await response.json();
-        // res.json(data);
-        res.render('joke', { joke: data.body[0], error: null})
-    } catch (error) {
-        // res.status(500).json({ error: error.message });
-        res.render('joke', { joke: null, error: 'Error fetching joke' })
-    }
+        if (cachedData) {
+            // Cache hit
+            return res.json({ source: 'cache', data: JSON.parse(cachedData) });
+        } else {
+            // Cache miss
+            const url = process.env.RAPIDAPI_URL;
+            const headers = {
+                'X-RapidAPI-Key': process.env.JOKE_API_KEY,
+                'X-RapidAPI-Host': process.env.RAPIDAPI_HOST
+            };
+
+            try {
+                const response = await fetch(url, { headers });
+                const data = await response.json();
+                redisClient.setex(cacheKey, 15, JSON.stringify(data));
+                res.json({ source: 'api', data });
+            } catch (error) {
+                res.status(500).json({ error: error.message });
+            }
+        }
+    });
 });
 
 // POST route that uses a callback to handle the async API call
 router.post('/callback-random-joke', function(req, res) {
-    const options = {
-        url: process.env.RAPIDAPI_URL,
-        headers: {
-            'X-RapidAPI-Key': process.env.JOKE_API_KEY,
-            'X-RapidAPI-Host': process.env.RAPIDAPI_HOST
-        }
-    };
-    
-    // Callback
-    request.get(options, function(err, response, body) {
+    const cacheKey = 'callback-random-joke';
+    redisClient.get(cacheKey, (err, cachedData) => {
         if (err) {
-            res.render('joke', { joke: null, error: 'Error fetching joke' })
+            return res.status(500).json({ error: err.message });
+        }
+
+        if (cachedData) {
+            // Cache hit
+            return res.json({ source: 'cache', data: JSON.parse(cachedData) });
         } else {
-            const parsedBody = JSON.parse(body);
-            res.render('joke', { joke: parsedBody.body[0], error: null });
+            // Cache miss
+            const options = {
+                url: process.env.RAPIDAPI_URL,
+                headers: {
+                    'X-RapidAPI-Key': process.env.JOKE_API_KEY,
+                    'X-RapidAPI-Host': process.env.RAPIDAPI_HOST
+                }
+            };
+
+            request.get(options, function(err, response, body) {
+                if (err) {
+                    res.status(500).json({ error: 'Error fetching joke' });
+                } else {
+                    const data = JSON.parse(body);
+                    redisClient.setex(cacheKey, 15, JSON.stringify(data));
+                    res.json({ source: 'api', data });
+                }
+            });
         }
     });
 });
