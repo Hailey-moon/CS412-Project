@@ -1,0 +1,12 @@
+doctype html
+html
+    head 
+        title Dad Joke 
+    body 
+        h1 Dad Joke 
+        if joke 
+            .joke
+                p #{joke.setup}
+                p #{joke.punchline}
+        else 
+            p No joke found!
