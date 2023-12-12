@@ -1,9 +1,21 @@
 require('dotenv').config();
 var express = require('express');
 var app = express();
-var ps4Router = require('./ps4');
+var redis = require('redis');
 
-// Use the router on the path '/ps4'
+// Create a Redis client
+var redisClient = redis.createClient();
+redisClient.connect().catch(console.error);
+
+
+redisClient.on('connect', function () {
+  console.log('Redis client connected');
+}).on('error', function (error) {
+  console.log('Redis error: ', error);
+});
+
+// Use the router on the path '/ps4', passing in Redis client to the router
+var ps4Router = require('./ps4')(redisClient);
 app.use('/ps4', ps4Router);
 
 // Listen on port 3000
