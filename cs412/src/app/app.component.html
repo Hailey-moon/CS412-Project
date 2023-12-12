@@ -1,0 +1,15 @@
+<main class="main">
+  <div class="content">
+    <button (click)="fetchData()">Fetch Data</button>
+      <div *ngIf="showData">
+        <div *ngFor="let item of data">
+          <!-- Display your data here -->
+          <h3>{{ item.body[0].setup }}</h3>
+          <p>{{ item.body[0].punchline }}</p>
+        </div>
+      </div>
+
+  </div>
+</main>
+
+<router-outlet></router-outlet>

@@ -1,0 +1,35 @@
+[
+    {
+        "body": [
+          {
+            "_id": "5f80ccd641785ba7c7d27b99",
+            "punchline": "Help! I’ve fallen and I can’t giddyup!",
+            "setup": "What did the horse say after it tripped?",
+            "type": "general"
+          }
+        ],
+        "success": true
+    },
+    {
+        "body": [
+          {
+            "_id": "5f80ccd641785ba7c7d27b98",
+            "punchline": "Because the “P” is silent.",
+            "setup": "Why can’t you hear a pterodactyl going to the bathroom?",
+            "type": "general"
+          }
+        ],
+        "success": true
+    },
+    {
+        "body": [
+          {
+            "_id": "5f80ccd641785ba7c7d27b97",
+            "punchline": "Join the club.",
+            "setup": "Bad at golf?",
+            "type": "general"
+          }
+        ],
+        "success": true
+    }
+]
